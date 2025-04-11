@@ -63,9 +63,15 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
-app.register_blueprint(api_routes, url_prefix='/api/workouts')
+app.register_blueprint(api_routes, url_prefix='/api')
+
+# with app.app_context():
+#     db.drop_all()  # Drop all tables
+#     db.create_all() 
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
+    

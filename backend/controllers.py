@@ -7,7 +7,7 @@ api = Blueprint('api', __name__)
 
 # ---------- USER APIs ----------
 
-@api.route('/api/users/register', methods=['POST'])
+@api.route('/register', methods=['POST'])
 def register_user():
     data = request.json
     if User.query.filter_by(email=data['email']).first():

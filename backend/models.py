@@ -25,6 +25,7 @@ class WorkoutPlan(db.Model):
     description = db.Column(db.Text)
     duration = db.Column(db.Integer)
     difficulty = db.Column(db.String(50))
+    is_prebuilt = db.Column(db.Boolean, default=False)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     exercises = db.relationship('Exercise', backref='workout', lazy=True)
