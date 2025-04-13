@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, User, WorkoutPlan, Exercise, Progress
+from models import db, User, WorkoutPlan, Exercise, Progress,WorkoutLog
 from datetime import datetime
 
 api = Blueprint('api', __name__)
@@ -51,7 +51,113 @@ def login_user():
             "name": user.name
         }
     })
+#------------user profile ApIs----------------
 
+# def create_user():
+#     data = request.json
+#     if User.query.filter_by(email=data['email']).first():
+#         return jsonify({"error": "Email already registered"}), 400
+    
+#     hashed_password = generate_password_hash(data['password'])
+
+#     new_user = User(
+#         username=data['username'],
+#         email=data['email'],
+#         password=hashed_password,
+#         name=data.get('name'),
+#         age=data.get('age'),
+#         gender=data.get('gender'),
+#         weight=data.get('weight'),
+#         height=data.get('height'),
+#         profile_picture=data.get('profile_picture')
+#     )
+#     db.session.add(new_user)
+#     db.session.commit()
+
+#     return jsonify({"message": "User created", "user_id": new_user.id})
+
+# Read User
+def get_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "name": user.name,
+        "age": user.age,
+        "gender": user.gender,
+        "weight": user.weight,
+        "height": user.height,
+        "profile_picture": user.profile_picture,
+        "created_at": user.created_at,
+        "updated_at": user.updated_at
+    })
+
+# Update User
+def update_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    data = request.json
+
+    user.username = data.get('username', user.username)
+    user.email = data.get('email', user.email)
+    if 'password' in data:
+        user.password = generate_password_hash(data['password'])
+    user.name = data.get('name', user.name)
+    user.age = data.get('age', user.age)
+    user.gender = data.get('gender', user.gender)
+    user.weight = data.get('weight', user.weight)
+    user.height = data.get('height', user.height)
+    user.profile_picture = data.get('profile_picture', user.profile_picture)
+    user.updated_at = datetime.utcnow()
+
+    db.session.commit()
+
+    return jsonify({"message": "User updated successfully"})
+
+# Delete User
+def delete_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message": "User deleted successfully"})
+
+
+
+
+# Set fitness level and goal
+def set_fitness_profile(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    data = request.json
+    user.fitness_level = data.get("fitness_level", user.fitness_level)
+    user.fitness_goal = data.get("fitness_goal", user.fitness_goal)
+    user.updated_at = datetime.utcnow()
+
+    db.session.commit()
+    return jsonify({"message": "Fitness profile updated successfully"})
+
+# Get fitness profile
+def get_fitness_profile(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({
+        "user_id": user.id,
+        "fitness_level": user.fitness_level,
+        "fitness_goal": user.fitness_goal
+    })
 
 # ---------- WORKOUT APIs ----------
 
@@ -158,3 +264,36 @@ def get_user_progress(user_id):
         "calories_burned": p.calories_burned,
         "notes": p.notes
     } for p in progress_list])
+
+
+#-----------
+
+def log_workout_progress():
+    data = request.json
+    log = WorkoutLog(
+        user_id=data['user_id'],
+        workout_id=data['workout_id'],
+        date=datetime.strptime(data['date'], "%Y-%m-%d").date(),
+        completed_exercises=data.get('completed_exercises'),
+        duration=data.get('duration'),
+        calories_burned=data.get('calories_burned'),
+        notes=data.get('notes')
+    )
+    db.session.add(log)
+    db.session.commit()
+    return jsonify({"message": "Workout log saved successfully"}), 201
+
+def get_workout_logs(user_id):
+    logs = WorkoutLog.query.filter_by(user_id=user_id).order_by(WorkoutLog.date.desc()).all()
+    return jsonify([
+        {
+            "date": log.date.isoformat(),
+            "workout_id": log.workout_id,
+            "completed_exercises": log.completed_exercises,
+            "duration": log.duration,
+            "calories_burned": log.calories_burned,
+            "notes": log.notes,
+            "created_at": log.created_at.isoformat()
+        }
+        for log in logs
+    ])
