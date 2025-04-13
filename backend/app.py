@@ -53,25 +53,24 @@
 #     app.run(debug=True)
 
 
-
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from config import Config
-from models import db
+from models import db  # Use the same db object from models.py
 from routes import bp as api_routes
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
-app.register_blueprint(api_routes, url_prefix='/api')
+migrate = Migrate(app, db)  # Don't re-declare db
 
-# with app.app_context():
-#     db.drop_all()  # Drop all tables
-#     db.create_all() 
+app.register_blueprint(api_routes, url_prefix='/api')
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        db.create_all()  # This is okay for now, but use migrations later
     app.run(debug=True)
 
     

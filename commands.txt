@@ -1,0 +1,28 @@
+for my sql installation commands
+pip install flask_sqlalchemy flask_migrate pymysql --no-cache-dir
+
+powerShell commands
+
+1. Run Your Flask App
+flask run
+
+Or, if you're using app.py and want to run it directly:
+python app.py
+
+2. Set the FLASK_APP environment variable:
+$env:FLASK_APP = "app.py"
+
+cd
+cd "D:\intrenship\fitness app\backend"
+.\venv\Scripts\activate
+
+
+3. Run Flask-Migrate commands:
+flask db init
+flask db migrate -m "Initial migration"
+flask db upgrade
+
+
+$env:FLASK_APP = "app.py"        # or your actual filename
+$env:FLASK_ENV = "development"   # enables debug mode
+
