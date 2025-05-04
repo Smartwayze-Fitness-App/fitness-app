@@ -8,7 +8,9 @@ from controllers import api
 
 app = Flask(__name__)
 app.config.from_object(Config)
-
+# jwt abb
+# jwt abb
+# jwt abb
 db.init_app(app)
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
