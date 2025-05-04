@@ -1,13 +1,14 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, User, WorkoutPlan, Exercise, Progress,WorkoutLog
+from models import db, User, WorkoutPlan, Exercise, Progress, WorkoutLog
 from datetime import datetime
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
 api = Blueprint('api', __name__)
 
 # ---------- USER APIs ----------
 
-@api.route('/register', methods=['POST'])
+@api.route('/users/register', methods=['POST'])
 def register_user():
     data = request.json
     if User.query.filter_by(email=data['email']).first():
@@ -33,17 +34,22 @@ def register_user():
 
     return jsonify({"message": "User registered successfully", "user_id": new_user.id})
 
-
-@api.route('/api/users/login', methods=['POST'])
+@api.route('/users/login', methods=['POST'])
 def login_user():
     data = request.json
+    if not data.get('email') or not data.get('password'):
+        return jsonify({"error": "Email and password are required"}), 400
+
     user = User.query.filter_by(email=data['email']).first()
 
     if not user or not check_password_hash(user.password, data['password']):
         return jsonify({"error": "Invalid email or password"}), 401
 
+    access_token = create_access_token(identity=str(user.id))  # Fix: Convert user.id to string
+
     return jsonify({
         "message": "Login successful",
+        "access_token": access_token,
         "user": {
             "id": user.id,
             "username": user.username,
@@ -51,33 +57,16 @@ def login_user():
             "name": user.name
         }
     })
-#------------user profile ApIs----------------
 
-# def create_user():
-#     data = request.json
-#     if User.query.filter_by(email=data['email']).first():
-#         return jsonify({"error": "Email already registered"}), 400
-    
-#     hashed_password = generate_password_hash(data['password'])
+# ---------- USER PROFILE APIs ----------
 
-#     new_user = User(
-#         username=data['username'],
-#         email=data['email'],
-#         password=hashed_password,
-#         name=data.get('name'),
-#         age=data.get('age'),
-#         gender=data.get('gender'),
-#         weight=data.get('weight'),
-#         height=data.get('height'),
-#         profile_picture=data.get('profile_picture')
-#     )
-#     db.session.add(new_user)
-#     db.session.commit()
-
-#     return jsonify({"message": "User created", "user_id": new_user.id})
-
-# Read User
+@api.route('/users/<int:user_id>', methods=['GET'])
+@jwt_required()
 def get_user(user_id):
+    current_user_id = get_jwt_identity()
+    if int(current_user_id) != user_id:  # Convert current_user_id to int for comparison
+        return jsonify({"error": "Unauthorized access"}), 403
+
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
@@ -92,21 +81,28 @@ def get_user(user_id):
         "weight": user.weight,
         "height": user.height,
         "profile_picture": user.profile_picture,
-        "created_at": user.created_at,
-        "updated_at": user.updated_at
+        "created_at": user.created_at.isoformat(),
+        "updated_at": user.updated_at.isoformat() if user.updated_at else None
     })
 
-# Update User
+@api.route('/users/<int:user_id>', methods=['PUT'])
+@jwt_required()
 def update_user(user_id):
+    current_user_id = get_jwt_identity()
+    if int(current_user_id) != user_id:
+        return jsonify({"error": "Unauthorized access"}), 403
+
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
 
     data = request.json
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
 
     user.username = data.get('username', user.username)
     user.email = data.get('email', user.email)
-    if 'password' in data:
+    if 'password' in data and data['password']:
         user.password = generate_password_hash(data['password'])
     user.name = data.get('name', user.name)
     user.age = data.get('age', user.age)
@@ -120,8 +116,13 @@ def update_user(user_id):
 
     return jsonify({"message": "User updated successfully"})
 
-# Delete User
+@api.route('/users/<int:user_id>', methods=['DELETE'])
+@jwt_required()
 def delete_user(user_id):
+    current_user_id = get_jwt_identity()
+    if int(current_user_id) != user_id:
+        return jsonify({"error": "Unauthorized access"}), 403
+
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
@@ -130,11 +131,13 @@ def delete_user(user_id):
     db.session.commit()
     return jsonify({"message": "User deleted successfully"})
 
-
-
-
-# Set fitness level and goal
+@api.route('/users/<int:user_id>/fitness', methods=['PUT'])
+@jwt_required()
 def set_fitness_profile(user_id):
+    current_user_id = get_jwt_identity()
+    if int(current_user_id) != user_id:
+        return jsonify({"error": "Unauthorized access"}), 403
+
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
@@ -147,8 +150,13 @@ def set_fitness_profile(user_id):
     db.session.commit()
     return jsonify({"message": "Fitness profile updated successfully"})
 
-# Get fitness profile
+@api.route('/users/<int:user_id>/fitness', methods=['GET'])
+@jwt_required()
 def get_fitness_profile(user_id):
+    current_user_id = get_jwt_identity()
+    if int(current_user_id) != user_id:
+        return jsonify({"error": "Unauthorized access"}), 403
+
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
@@ -161,16 +169,22 @@ def get_fitness_profile(user_id):
 
 # ---------- WORKOUT APIs ----------
 
-@api.route('/api/workouts', methods=['POST'])
+@api.route('/workouts', methods=['POST'])
+@jwt_required()
 def create_custom_workout():
+    current_user_id = get_jwt_identity()
     data = request.json
+
+    if data['created_by'] != int(current_user_id):
+        return jsonify({"error": "Unauthorized to create workout for another user"}), 403
+
     plan = WorkoutPlan(
         title=data['title'],
         category=data['category'],
         description=data['description'],
         duration=data['duration'],
         difficulty=data['difficulty'],
-        created_by=data['created_by'],
+        created_by=int(current_user_id),
         is_prebuilt=False,
         created_at=datetime.utcnow()
     )
@@ -190,30 +204,25 @@ def create_custom_workout():
     db.session.commit()
     return jsonify({"message": "Workout plan created", "plan_id": plan.id})
 
-
-@api.route('/api/workouts', methods=['GET'])
+@api.route('/workouts', methods=['GET'])
 def get_workout_plans():
     plans = WorkoutPlan.query.all()
     return jsonify([serialize_workout(plan) for plan in plans])
 
-
-@api.route('/api/workouts/prebuilt', methods=['GET'])
+@api.route('/workouts/prebuilt', methods=['GET'])
 def get_prebuilt_plans():
     plans = WorkoutPlan.query.filter_by(is_prebuilt=True).all()
     return jsonify([serialize_workout(plan) for plan in plans])
 
-
-@api.route('/api/workouts/categories', methods=['GET'])
+@api.route('/workouts/categories', methods=['GET'])
 def get_categories():
     categories = db.session.query(WorkoutPlan.category).distinct()
     return jsonify([cat[0] for cat in categories])
 
-
-@api.route('/api/workouts/category/<string:category>', methods=['GET'])
+@api.route('/workouts/category/<string:category>', methods=['GET'])
 def get_plans_by_category(category):
     plans = WorkoutPlan.query.filter_by(category=category).all()
     return jsonify([serialize_workout(plan) for plan in plans])
-
 
 def serialize_workout(plan):
     return {
@@ -231,17 +240,22 @@ def serialize_workout(plan):
             "reps": ex.reps,
             "rest_time": ex.rest_time
         } for ex in plan.exercises],
-        "created_at": plan.created_at
+        "created_at": plan.created_at.isoformat()
     }
-
 
 # ---------- PROGRESS APIs ----------
 
-@api.route('/api/progress', methods=['POST'])
+@api.route('/progress', methods=['POST'])
+@jwt_required()
 def track_progress():
+    current_user_id = get_jwt_identity()
     data = request.json
+
+    if data['user_id'] != int(current_user_id):
+        return jsonify({"error": "Unauthorized to track progress for another user"}), 403
+
     progress = Progress(
-        user_id=data['user_id'],
+        user_id=int(current_user_id),
         date=datetime.utcnow().date(),
         weight=data.get('weight'),
         workouts_completed=data.get('workouts_completed', 0),
@@ -253,25 +267,33 @@ def track_progress():
     db.session.commit()
     return jsonify({"message": "Progress saved"})
 
-
-@api.route('/api/progress/<int:user_id>', methods=['GET'])
+@api.route('/progress/<int:user_id>', methods=['GET'])
+@jwt_required()
 def get_user_progress(user_id):
+    current_user_id = get_jwt_identity()
+    if int(current_user_id) != user_id:
+        return jsonify({"error": "Unauthorized access"}), 403
+
     progress_list = Progress.query.filter_by(user_id=user_id).all()
     return jsonify([{
-        "date": p.date,
+        "date": p.date.isoformat(),
         "weight": p.weight,
         "workouts_completed": p.workouts_completed,
         "calories_burned": p.calories_burned,
         "notes": p.notes
     } for p in progress_list])
 
-
-#-----------
-
+@api.route('/workout_logs', methods=['POST'])
+@jwt_required()
 def log_workout_progress():
+    current_user_id = get_jwt_identity()
     data = request.json
+
+    if data['user_id'] != int(current_user_id):
+        return jsonify({"error": "Unauthorized to log workout for another user"}), 403
+
     log = WorkoutLog(
-        user_id=data['user_id'],
+        user_id=int(current_user_id),
         workout_id=data['workout_id'],
         date=datetime.strptime(data['date'], "%Y-%m-%d").date(),
         completed_exercises=data.get('completed_exercises'),
@@ -283,7 +305,13 @@ def log_workout_progress():
     db.session.commit()
     return jsonify({"message": "Workout log saved successfully"}), 201
 
+@api.route('/workout_logs/<int:user_id>', methods=['GET'])
+@jwt_required()
 def get_workout_logs(user_id):
+    current_user_id = get_jwt_identity()
+    if int(current_user_id) != user_id:
+        return jsonify({"error": "Unauthorized access"}), 403
+
     logs = WorkoutLog.query.filter_by(user_id=user_id).order_by(WorkoutLog.date.desc()).all()
     return jsonify([
         {
