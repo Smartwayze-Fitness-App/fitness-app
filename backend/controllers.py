@@ -59,7 +59,9 @@ def login_user():
     })
 
 # ---------- USER PROFILE APIs ----------
-
+# ---------- USER PROFILE APIs ----------
+# ---------- USER PROFILE APIs ----------
+# ---------- USER PROFILE APIs ----------
 @api.route('/users/<int:user_id>', methods=['GET'])
 @jwt_required()
 def get_user(user_id):
