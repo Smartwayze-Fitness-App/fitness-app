@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, User, WorkoutPlan, Exercise, Progress, WorkoutLog
+from models import db, User, UserProfile, WorkoutPlan, Exercise, Progress, WorkoutLog
 from datetime import datetime
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
@@ -11,21 +11,22 @@ api = Blueprint('api', __name__)
 @api.route('/users/register', methods=['POST'])
 def register_user():
     data = request.json
+    required_fields = ['name', 'email', 'password', 'phone']
+    
+    # Check if all required fields are present
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": "Name, email, password, and phone are required"}), 400
+        
     if User.query.filter_by(email=data['email']).first():
         return jsonify({"error": "Email already registered"}), 400
 
     hashed_password = generate_password_hash(data['password'])
 
     new_user = User(
-        username=data['username'],
+        name=data['name'],
         email=data['email'],
         password=hashed_password,
-        name=data.get('name'),
-        age=data.get('age'),
-        gender=data.get('gender'),
-        weight=data.get('weight'),
-        height=data.get('height'),
-        profile_picture=data.get('profile_picture'),
+        phone=data['phone'],
         created_at=datetime.utcnow()
     )
 
@@ -45,44 +46,114 @@ def login_user():
     if not user or not check_password_hash(user.password, data['password']):
         return jsonify({"error": "Invalid email or password"}), 401
 
-    access_token = create_access_token(identity=str(user.id))  # Fix: Convert user.id to string
+    access_token = create_access_token(identity=str(user.id))
 
     return jsonify({
         "message": "Login successful",
         "access_token": access_token,
         "user": {
             "id": user.id,
-            "username": user.username,
+            "name": user.name,
             "email": user.email,
-            "name": user.name
+            "phone": user.phone
         }
     })
 
 # ---------- USER PROFILE APIs ----------
-# ---------- USER PROFILE APIs ----------
-# ---------- USER PROFILE APIs ----------
-# ---------- USER PROFILE APIs ----------
-@api.route('/users/<int:user_id>', methods=['GET'])
+
+@api.route('/users/profile/<int:user_id>', methods=['POST'])
 @jwt_required()
-def get_user(user_id):
+def create_user_profile(user_id):
     current_user_id = get_jwt_identity()
-    if int(current_user_id) != user_id:  # Convert current_user_id to int for comparison
+    if int(current_user_id) != user_id:
         return jsonify({"error": "Unauthorized access"}), 403
 
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
 
+    # Check if profile already exists
+    if user.profile:
+        return jsonify({"error": "User profile already exists. Use PUT to update."}), 400
+
+    data = request.json
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    # Required fields for profile creation
+    required_profile_fields = ['username', 'age', 'gender', 'weight', 'height']
+    if not all(field in data for field in required_profile_fields):
+        return jsonify({"error": "Username, age, gender, weight, and height are required"}), 400
+
+    # Create new UserProfile
+    new_profile = UserProfile(
+        user_id=user_id,
+        username=data['username'],
+        age=data['age'],
+        gender=data['gender'],
+        weight=data['weight'],
+        height=data['height'],
+        profile_picture=data.get('profile_picture'),
+        fitness_level=data.get('fitness_level'),
+        fitness_goal=data.get('fitness_goal'),
+        created_at=datetime.utcnow()
+    )
+
+    # Update User fields if provided
+    user.name = data.get('name', user.name)
+    user.email = data.get('email', user.email)
+    user.phone = data.get('phone', user.phone)
+    if 'password' in data and data['password']:
+        user.password = generate_password_hash(data['password'])
+    user.updated_at = datetime.utcnow()
+
+    db.session.add(new_profile)
+    db.session.commit()
+
+    return jsonify({
+        "message": "User profile created successfully",
+        "profile": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "phone": user.phone,
+            "username": new_profile.username,
+            "age": new_profile.age,
+            "gender": new_profile.gender,
+            "weight": new_profile.weight,
+            "height": new_profile.height,
+            "profile_picture": new_profile.profile_picture,
+            "fitness_level": new_profile.fitness_level,
+            "fitness_goal": new_profile.fitness_goal,
+            "created_at": user.created_at.isoformat(),
+            "updated_at": user.updated_at.isoformat()
+        }
+    }), 201
+
+@api.route('/users/<int:user_id>', methods=['GET'])
+@jwt_required()
+def get_user(user_id):
+    current_user_id = get_jwt_identity()
+    if int(current_user_id) != user_id:
+        return jsonify({"error": "Unauthorized access"}), 403
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    profile = user.profile  # Access UserProfile via relationship
+
     return jsonify({
         "id": user.id,
-        "username": user.username,
-        "email": user.email,
         "name": user.name,
-        "age": user.age,
-        "gender": user.gender,
-        "weight": user.weight,
-        "height": user.height,
-        "profile_picture": user.profile_picture,
+        "email": user.email,
+        "phone": user.phone,
+        "username": profile.username if profile else None,
+        "age": profile.age if profile else None,
+        "gender": profile.gender if profile else None,
+        "weight": profile.weight if profile else None,
+        "height": profile.height if profile else None,
+        "profile_picture": profile.profile_picture if profile else None,
         "created_at": user.created_at.isoformat(),
         "updated_at": user.updated_at.isoformat() if user.updated_at else None
     })
@@ -102,17 +173,29 @@ def update_user(user_id):
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    user.username = data.get('username', user.username)
+    # Update User fields
+    user.name = data.get('name', user.name)
     user.email = data.get('email', user.email)
+    user.phone = data.get('phone', user.phone)
     if 'password' in data and data['password']:
         user.password = generate_password_hash(data['password'])
-    user.name = data.get('name', user.name)
-    user.age = data.get('age', user.age)
-    user.gender = data.get('gender', user.gender)
-    user.weight = data.get('weight', user.weight)
-    user.height = data.get('height', user.height)
-    user.profile_picture = data.get('profile_picture', user.profile_picture)
     user.updated_at = datetime.utcnow()
+
+    # Update or create UserProfile
+    profile = user.profile
+    if not profile:
+        profile = UserProfile(user_id=user_id, created_at=datetime.utcnow())
+        db.session.add(profile)
+
+    profile.username = data.get('username', profile.username)
+    profile.age = data.get('age', profile.age)
+    profile.gender = data.get('gender', profile.gender)
+    profile.weight = data.get('weight', profile.weight)
+    profile.height = data.get('height', profile.height)
+    profile.profile_picture = data.get('profile_picture', profile.profile_picture)
+    profile.fitness_level = data.get('fitness_level', profile.fitness_level)
+    profile.fitness_goal = data.get('fitness_goal', profile.fitness_goal)
+    profile.updated_at = datetime.utcnow()
 
     db.session.commit()
 
@@ -129,6 +212,7 @@ def delete_user(user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
 
+    # UserProfile will be deleted automatically via cascade if configured in DB
     db.session.delete(user)
     db.session.commit()
     return jsonify({"message": "User deleted successfully"})
@@ -145,8 +229,16 @@ def set_fitness_profile(user_id):
         return jsonify({"error": "User not found"}), 404
 
     data = request.json
-    user.fitness_level = data.get("fitness_level", user.fitness_level)
-    user.fitness_goal = data.get("fitness_goal", user.fitness_goal)
+
+    # Update or create UserProfile
+    profile = user.profile
+    if not profile:
+        profile = UserProfile(user_id=user_id, created_at=datetime.utcnow())
+        db.session.add(profile)
+
+    profile.fitness_level = data.get("fitness_level", profile.fitness_level)
+    profile.fitness_goal = data.get("fitness_goal", profile.fitness_goal)
+    profile.updated_at = datetime.utcnow()
     user.updated_at = datetime.utcnow()
 
     db.session.commit()
@@ -163,10 +255,11 @@ def get_fitness_profile(user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
 
+    profile = user.profile
     return jsonify({
         "user_id": user.id,
-        "fitness_level": user.fitness_level,
-        "fitness_goal": user.fitness_goal
+        "fitness_level": profile.fitness_level if profile else None,
+        "fitness_goal": profile.fitness_goal if profile else None
     })
 
 # ---------- WORKOUT APIs ----------
