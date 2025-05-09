@@ -60,7 +60,9 @@ def login_user():
     })
 
 # ---------- USER PROFILE APIs ----------
-
+# ---------- USER PROFILE APIs ----------
+# ---------- USER PROFILE APIs ----------
+# ---------- USER PROFILE APIs ----------
 @api.route('/users/profile/<int:user_id>', methods=['POST'])
 @jwt_required()
 def create_user_profile(user_id):
