@@ -1,30 +1,96 @@
 import 'package:flutter/material.dart';
-import 'package:untitled/Achievements_screen.dart';
-import 'package:untitled/exercise_library.dart';
-import 'package:untitled/meal_planscreen.dart';
-import 'package:untitled/workout_plan_screen.dart';
-import 'community_challengescreen.dart';
-import 'progress_trackerscreen.dart';  // Import the screen you created
+import 'dart:async';
+import 'screens/create_profile.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(FitoraApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
+class FitoraApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Fitora Fitness App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF14452F)),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF3FFF0),
-        fontFamily: 'SansSerif',
-      ),
+      title: 'Fitora',
       debugShowCheckedModeBanner: false,
-      home:  MealPlansScreen(), // Set the Progress Tracker as home
+      theme: ThemeData(
+        scaffoldBackgroundColor: Color(0xFFF3FFF0),
+        fontFamily: 'Sans',
+      ),
+      home: SplashScreen(),
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      duration: Duration(seconds: 2),
+      vsync: this,
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: Offset(0, 1), // Start from bottom
+      end: Offset(0, 0),   // Slide to center
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    ));
+
+    _controller.forward();
+
+    // Navigate to CreateProfileScreen after animation + small delay
+    Timer(Duration(seconds: 4), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => CreateProfileScreen()),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SlideTransition(
+        position: _slideAnimation,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/logo.png',
+                height: 120,
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Fitora',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF003C1A),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
