@@ -1,103 +1,93 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:intl/intl.dart';
+
+void main() {
+  runApp(ReminderApp());
+}
+
+class ReminderApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: ReminderScreen(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+class Reminder {
+  String title;
+  String subtitle;
+  TimeOfDay time;
+  bool completed;
+
+  Reminder({
+    required this.title,
+    required this.subtitle,
+    required this.time,
+    this.completed = false,
+  });
+}
 
 class ReminderScreen extends StatefulWidget {
-  const ReminderScreen({super.key});
-
   @override
-  State<ReminderScreen> createState() => _ReminderScreenState();
+  _ReminderScreenState createState() => _ReminderScreenState();
 }
 
 class _ReminderScreenState extends State<ReminderScreen> {
-  List<Map<String, dynamic>> reminders = [];
+  List<Reminder> reminders = [
+    Reminder(title: 'Workout Reminder', subtitle: 'Time for leg day', time: TimeOfDay(hour: 18, minute: 0)),
+    Reminder(title: 'Water Reminder', subtitle: 'Time to drink water', time: TimeOfDay(hour: 14, minute: 0), completed: true),
+    Reminder(title: 'Meal Reminder', subtitle: 'Track your lunch', time: TimeOfDay(hour: 12, minute: 0)),
+  ];
 
-  @override
-  void initState() {
-    super.initState();
-    _loadReminders();
-  }
-
-  Future<void> _loadReminders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? data = prefs.getString('reminders');
-    if (data != null) {
-      setState(() {
-        reminders = List<Map<String, dynamic>>.from(json.decode(data));
-      });
-    } else {
-      // Default values
-      reminders = [
-        {
-          "title": "Workout Reminder",
-          "time": "07:00 AM",
-          "icon": Icons.fitness_center.codePoint,
-          "color": Colors.green.value
-        },
-        {
-          "title": "Water Reminder",
-          "time": "Every 2 hrs",
-          "icon": Icons.local_drink.codePoint,
-          "color": Colors.blue.value
-        },
-      ];
-      _saveReminders();
-    }
-  }
-
-  Future<void> _saveReminders() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('reminders', json.encode(reminders));
-  }
-
-  void _addReminder(String title, String time) {
+  void _toggleCompletion(int index) {
     setState(() {
-      reminders.add({
-        "title": title,
-        "time": time,
-        "icon": Icons.alarm.codePoint,
-        "color": Colors.purple.value,
-      });
+      reminders[index].completed = !reminders[index].completed;
     });
-    _saveReminders();
+  }
+
+  void _addReminder(String title, String subtitle, TimeOfDay time) {
+    setState(() {
+      reminders.add(Reminder(title: title, subtitle: subtitle, time: time));
+    });
   }
 
   void _showAddReminderDialog() {
     final titleController = TextEditingController();
-    final timeController = TextEditingController();
+    final subtitleController = TextEditingController();
+    TimeOfDay selectedTime = TimeOfDay.now();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Add Reminder"),
+        title: Text("Set Reminder"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Reminder Title'),
-            ),
-            TextField(
-              controller: timeController,
-              decoration: const InputDecoration(labelText: 'Time or Frequency'),
+            TextField(controller: titleController, decoration: InputDecoration(labelText: "Title")),
+            TextField(controller: subtitleController, decoration: InputDecoration(labelText: "Description")),
+            SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () async {
+                TimeOfDay? picked = await showTimePicker(
+                  context: context,
+                  initialTime: selectedTime,
+                );
+                if (picked != null) selectedTime = picked;
+              },
+              child: Text("Pick Time"),
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
             onPressed: () {
-              if (titleController.text.isNotEmpty &&
-                  timeController.text.isNotEmpty) {
-                _addReminder(titleController.text, timeController.text);
-                Navigator.pop(context);
-              }
+              Navigator.of(context).pop();
+              _addReminder(titleController.text, subtitleController.text, selectedTime);
             },
-            child: const Text("Add"),
-          ),
+            child: Text("Add"),
+          )
         ],
       ),
     );
@@ -105,91 +95,128 @@ class _ReminderScreenState extends State<ReminderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    String today = DateFormat('EEEE, MMMM d').format(DateTime.now());
+
     return Scaffold(
-      backgroundColor: const Color(0xFFE6F5E6),
-      appBar: AppBar(
-        backgroundColor: Colors.green,
-        title: const Text("Reminders", style: TextStyle(color: Colors.white)),
-        centerTitle: true,
-      ),
+      backgroundColor: Color(0xFFD6EAD9),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: ListView.separated(
-          itemCount: reminders.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final item = reminders[index];
-            return ReminderCard(
-              title: item["title"],
-              time: item["time"],
-              icon: IconData(item["icon"], fontFamily: 'MaterialIcons'),
-              iconColor: Color(item["color"]),
-            );
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddReminderDialog,
-        icon: const Icon(Icons.add),
-        label: const Text("Add Reminder"),
-        backgroundColor: Colors.green.shade700,
-      ),
-    );
-  }
-}
-
-class ReminderCard extends StatelessWidget {
-  final String title;
-  final String time;
-  final IconData icon;
-  final Color iconColor;
-
-  const ReminderCard({
-    super.key,
-    required this.title,
-    required this.time,
-    required this.icon,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: iconColor.withOpacity(0.2),
-            child: Icon(icon, color: iconColor),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: ListView(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(time, style: const TextStyle(color: Colors.grey)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Today's Reminder", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.green.shade900)),
+                    SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 16, color: Colors.black54),
+                        SizedBox(width: 5),
+                        Text(today, style: TextStyle(fontSize: 14, color: Colors.black87)),
+                      ],
+                    ),
+                  ],
+                ),
+                ElevatedButton(
+                  onPressed: _showAddReminderDialog,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade200,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text("Set Reminder", style: TextStyle(color: Colors.green.shade900)),
+                ),
               ],
             ),
-          ),
-          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-        ],
+            SizedBox(height: 20),
+            ...reminders.asMap().entries.map((entry) {
+              int index = entry.key;
+              Reminder reminder = entry.value;
+
+              IconData iconData;
+              switch (reminder.title) {
+                case 'Workout Reminder':
+                  iconData = Icons.fitness_center;
+                  break;
+                case 'Water Reminder':
+                  iconData = Icons.water_drop;
+                  break;
+                case 'Meal Reminder':
+                  iconData = Icons.restaurant_menu;
+                  break;
+                default:
+                  iconData = Icons.alarm;
+              }
+
+              return Container(
+                margin: EdgeInsets.only(bottom: 16),
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 4))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(reminder.title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(iconData, color: Colors.green.shade800, size: 28),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            reminder.subtitle,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.black87,
+                              decoration: reminder.completed ? TextDecoration.lineThrough : TextDecoration.none,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, size: 18, color: Colors.black54),
+                        SizedBox(width: 4),
+                        Text(reminder.time.format(context), style: TextStyle(fontSize: 14)),
+                        Spacer(),
+                        ElevatedButton(
+                          onPressed: () => _toggleCompletion(index),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: reminder.completed ? Colors.green.shade800 : Colors.white,
+                            side: BorderSide(color: Colors.green.shade800),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: Text(
+                            reminder.completed ? "Completed" : "Mark as Done",
+                            style: TextStyle(color: reminder.completed ? Colors.white : Colors.black87),
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        OutlinedButton(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Snoozed")));
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.grey.shade400),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: Text("Snooze", style: TextStyle(color: Colors.black87)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
