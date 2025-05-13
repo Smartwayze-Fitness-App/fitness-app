@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class MealPlansScreen extends StatefulWidget {
   @override
@@ -11,82 +13,45 @@ class _MealPlansScreenState extends State<MealPlansScreen> {
   double dailyCalories = 1200;
   double calorieGoal = 2000;
 
-  final List<String> knownTypes = ['Vegetarian', 'Keto', 'High Protein'];
+  bool isLoading = true;
+  List<String> knownTypes = ['Vegetarian', 'Keto', 'High Protein'];
+  Map<String, List<Map<String, dynamic>>> categorizedMeals = {};
 
-  final Map<String, List<Map<String, dynamic>>> categorizedMeals = {
-    "Morning": [
-      {
-        "name": "Oatmeal with Berries",
-        "calories": 300.0,
-        "protein": "10g",
-        "carbs": "40g",
-        "fats": "5g",
-        "imagePath": "assets/oatmeal.jpg",
-        "icon": Icons.breakfast_dining,
-        "serving": "1 Bowl",
-        "type": "Vegetarian",
-      },
-      {
-        "name": "Boiled Eggs & Toast",
-        "calories": 250.0,
-        "protein": "12g",
-        "carbs": "20g",
-        "fats": "10g",
-        "imagePath": "assets/toast.jpg",
-        "icon": Icons.egg_alt,
-        "serving": "2 Eggs & 1 Slice Toast",
-        "type": "High Protein",
-      },
-    ],
-    "Afternoon": [
-      {
-        "name": "Grilled Chicken Salad",
-        "calories": 350.0,
-        "protein": "25g",
-        "carbs": "15g",
-        "fats": "10g",
-        "imagePath": "assets/grilled chicken.jpg",
-        "icon": Icons.lunch_dining,
-        "serving": "1 Plate",
-        "type": "Keto",
-      },
-      {
-        "name": "Brown Rice & Veggies",
-        "calories": 400.0,
-        "protein": "15g",
-        "carbs": "50g",
-        "fats": "12g",
-        "imagePath": "assets/brown_rice.jpg",
-        "icon": Icons.rice_bowl,
-        "serving": "1 Bowl",
-        "type": "Vegetarian",
-      },
-    ],
-    "Evening": [
-      {
-        "name": "Tofu Stir Fry",
-        "calories": 420.0,
-        "protein": "20g",
-        "carbs": "25g",
-        "fats": "18g",
-        "imagePath": "assets/tofu.jpeg",
-        "icon": Icons.dinner_dining,
-        "serving": "1 Plate",
-        "type": "Vegetarian",
-      },
-      {
-        "name": "Greek Yogurt Parfait",
-        "calories": 200.0,
-        "protein": "12g",
-        "carbs": "18g",
-        "fats": "6g",
-        "imagePath": "assets/parfait.jpg",
-        "icon": Icons.icecream,
-        "serving": "1 Glass",
-        "type": "High Protein",
-      },
-    ],
-  };
+  @override
+  void initState() {
+    super.initState();
+    fetchMealPlans();
+  }
+
+  Future<void> fetchMealPlans() async {
+    final url = Uri.parse("https://meal-api-production-614c.up.railway.app/meal-plans");
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final Map<String, List<Map<String, dynamic>>> loadedMeals = {};
+
+        data.forEach((category, meals) {
+          loadedMeals[category] = List<Map<String, dynamic>>.from(meals);
+        });
+
+        setState(() {
+          categorizedMeals = loadedMeals;
+          isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load meal plans');
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Error fetching meal plans: $e"),
+        backgroundColor: Colors.red,
+      ));
+    }
+  }
 
   List<MapEntry<String, List<Map<String, dynamic>>>> _filterCategorizedMeals() {
     final lowerSearch = searchQuery.toLowerCase();
@@ -94,9 +59,9 @@ class _MealPlansScreenState extends State<MealPlansScreen> {
 
     return categorizedMeals.entries.map((entry) {
       final filtered = entry.value.where((meal) {
-        final nameMatch = meal['name'].toLowerCase().contains(lowerSearch);
+        final nameMatch = meal['name'].toString().toLowerCase().contains(lowerSearch);
         final typeMatch = isTypeSearch
-            ? meal['type'].toLowerCase() == lowerSearch
+            ? meal['type'].toString().toLowerCase() == lowerSearch
             : (selectedFilter == 'All' || meal['type'] == selectedFilter);
         return (isTypeSearch || nameMatch) && typeMatch;
       }).toList();
@@ -109,7 +74,7 @@ class _MealPlansScreenState extends State<MealPlansScreen> {
     if (dailyCalories + calories > calorieGoal) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("You've exceeded your daily calorie goal!", style: TextStyle(color: Colors.white)),
+          content: Text("You've exceeded your daily calorie goal!"),
           backgroundColor: Colors.red.shade400,
         ),
       );
@@ -118,6 +83,14 @@ class _MealPlansScreenState extends State<MealPlansScreen> {
         dailyCalories += calories;
       });
     }
+  }
+
+  String _getImagePath(String mealName) {
+    final normalized = mealName.toLowerCase()
+        .replaceAll(' ', '_')
+        .replaceAll('&', 'and')
+        .replaceAll(RegExp(r'[^a-z0-9_]+'), '');
+    return 'assets/$normalized.jpg';
   }
 
   @override
@@ -197,7 +170,9 @@ class _MealPlansScreenState extends State<MealPlansScreen> {
           ),
         ),
       ),
-      body: Column(
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(12.0),
@@ -214,15 +189,7 @@ class _MealPlansScreenState extends State<MealPlansScreen> {
           ),
           Expanded(
             child: groupedFilteredMeals.isEmpty
-                ? Center(
-              child: Text(
-                knownTypes.map((e) => e.toLowerCase()).contains(searchQuery.toLowerCase()) || searchQuery.isEmpty
-                    ? "No meals found. Try another search or filter."
-                    : "No meals found for \"$searchQuery\". Try a valid food type like Vegetarian, Keto, or High Protein.",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                textAlign: TextAlign.center,
-              ),
-            )
+                ? Center(child: Text("No meals found matching your search."))
                 : ListView.builder(
               itemCount: groupedFilteredMeals.length,
               itemBuilder: (context, i) {
@@ -234,7 +201,8 @@ class _MealPlansScreenState extends State<MealPlansScreen> {
                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Text(
                         entry.key,
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green.shade800),
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green.shade800),
                       ),
                     ),
                     ...entry.value.map((meal) => Card(
@@ -244,52 +212,38 @@ class _MealPlansScreenState extends State<MealPlansScreen> {
                       child: ListTile(
                         contentPadding: EdgeInsets.all(12),
                         leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                           child: Image.asset(
-                            meal['imagePath'],
+                            _getImagePath(meal['name']),
                             width: 60,
                             height: 60,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Icon(Icons.image_not_supported, size: 50),
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.fastfood,
+                              size: 40,
+                              color: Colors.green,
+                            ),
                           ),
                         ),
                         title: Text(
                           meal['name'],
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade900, fontSize: 16),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, color: Colors.green.shade900),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Wrap(
-                              spacing: 10,
-                              children: [
-                                Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Icon(Icons.local_fire_department, size: 16, color: Colors.orange),
-                                  SizedBox(width: 4),
-                                  Text("Calories: ${meal['calories'].toStringAsFixed(0)} kcal"),
-                                ]),
-                                Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Icon(Icons.restaurant, size: 16, color: Colors.blueGrey),
-                                  SizedBox(width: 4),
-                                  Text(meal['serving']),
-                                ]),
-                              ],
-                            ),
-                            SizedBox(height: 4),
-                            Text("Protein: ${meal['protein']} | Carbs: ${meal['carbs']} | Fats: ${meal['fats']}", style: TextStyle(fontSize: 13)),
-                            SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.category, size: 16, color: Colors.teal),
-                                SizedBox(width: 4),
-                                Flexible(child: Text("Type: ${meal['type']}", overflow: TextOverflow.ellipsis)),
-                              ],
-                            ),
+                            Text("Calories: ${meal['calories']} kcal"),
+                            Text(
+                                "Protein: ${meal['protein']} | Carbs: ${meal['carbs']} | Fats: ${meal['fats']}"),
+                            Text("Serving: ${meal['serving']}"),
+                            Text("Type: ${meal['type']}"),
                           ],
                         ),
                         trailing: IconButton(
                           icon: Icon(Icons.add_circle_outline, color: Colors.green.shade900),
-                          onPressed: () => _addMealCalories(meal['calories']),
+                          onPressed: () => _addMealCalories(
+                              double.tryParse(meal['calories'].toString()) ?? 0),
                         ),
                       ),
                     )),
@@ -303,3 +257,4 @@ class _MealPlansScreenState extends State<MealPlansScreen> {
     );
   }
 }
+
