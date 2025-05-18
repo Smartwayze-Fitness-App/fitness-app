@@ -6,6 +6,8 @@ void main() {
 }
 
 class ReminderApp extends StatelessWidget {
+  const ReminderApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -30,6 +32,8 @@ class Reminder {
 }
 
 class ReminderScreen extends StatefulWidget {
+  const ReminderScreen({super.key});
+
   @override
   _ReminderScreenState createState() => _ReminderScreenState();
 }
