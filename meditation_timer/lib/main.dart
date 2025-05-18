@@ -22,10 +22,10 @@ class MeditationScreen extends StatefulWidget {
   const MeditationScreen({super.key});
 
   @override
-  _MeditationScreenState createState() => _MeditationScreenState();
+  MeditationScreenState createState() => MeditationScreenState();
 }
 
-class _MeditationScreenState extends State<MeditationScreen> {
+class MeditationScreenState extends State<MeditationScreen> {
   int _secondsRemaining = 30;
   bool _isPlaying = false;
   bool _isSoundOn = true;
@@ -41,8 +41,10 @@ class _MeditationScreenState extends State<MeditationScreen> {
 
         if (_isSoundOn) {
           try {
-            await _audioPlayer.stop();
-            await _audioPlayer.play(AssetSource('sounds/beep.mp3'));
+            await _audioPlayer.play(
+              AssetSource('sounds/beep.mp3'),
+              volume: 1.0,
+            );
           } catch (e) {
             debugPrint("Audio Error: $e");
           }
@@ -98,7 +100,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
       body: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/background.jpg'),
+            image: AssetImage('assets/images/background.jpg'),
             fit: BoxFit.cover,
           ),
         ),
@@ -207,7 +209,7 @@ class _MeditationScreenState extends State<MeditationScreen> {
                 "Inhale Peace, Exhale Stress",
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: 20,
                 ),
               )
             ],
