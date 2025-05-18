@@ -4,11 +4,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
 
-void main() {
-  runApp(SleepTrackerApp());
-}
-
 class SleepTrackerApp extends StatelessWidget {
+  const SleepTrackerApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -19,6 +17,8 @@ class SleepTrackerApp extends StatelessWidget {
 }
 
 class SleepTrackerPage extends StatefulWidget {
+  const SleepTrackerPage({super.key});
+
   @override
   _SleepTrackerPageState createState() => _SleepTrackerPageState();
 }
@@ -102,7 +102,7 @@ class _SleepTrackerPageState extends State<SleepTrackerPage> {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 32, // Neeche jagah milaygi
+              reservedSize: 32,
               getTitlesWidget: (value, _) {
                 if (value.toInt() >= 0 && value.toInt() < days.length) {
                   return Padding(
@@ -246,10 +246,13 @@ class _SleepTrackerPageState extends State<SleepTrackerPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Weekly Sleep Summary',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          Center(
+                            child: Text(
+                              'Weekly Sleep Summary',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
                           ),
+
                           SizedBox(height: 20),
                           Expanded(child: buildBarChart()),
                         ],
