@@ -1,21 +1,10 @@
 import 'package:flutter/material.dart';
 import 'reminder_screen.dart';
 
-void main() {
-  runApp(FitnessApp());
-}
-
-class FitnessApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: DashboardScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
 
 class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
+
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
@@ -84,14 +73,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   print("Start workout tapped");
                 },
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.max,
                   children: [
                     Text("Start", style: TextStyle(color: Colors.black, fontSize: 16)),
                     Icon(Icons.play_arrow, color: Colors.black),
                   ],
                 ),
               ),
-              child: SizedBox(height: 10),
+              child: SizedBox(height: 15),
             ),
 
             // Calories Consumed
@@ -101,27 +90,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text("1,250 Kcal", style: TextStyle(fontSize: 18)),
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Increased size of the circular progress indicator
-                      SizedBox(
-                        height: 60, // Adjusted size of the circle
-                        width: 60, // Adjusted size of the circle
-                        child: CircularProgressIndicator(
-                          value: 1,
-                          strokeWidth: 6, // Adjusted stroke width to make the circle thicker
-                          backgroundColor: Colors.green.shade100,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade900),
-                        ),
-                      ),
-                      // Smaller font size for the "1250" text to fit better
-                      Text(
-                        "1,250",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14), // Reduced font size
-                      ),
-                    ],
-                  ),
+
+
+
                 ],
               ),
             ),
@@ -142,20 +113,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             // Motivational Quote
             _buildCard(
-               title: "Motivational Quote of the Day",
-               child: Container(
-               constraints: BoxConstraints(minHeight: 100),
-               child: Text(
-               "Push yourself, because no one else is going to do it for you.",
-                style: TextStyle(fontSize: 16, color: Colors.black87),
-               ),
+              title: "Motivational Quote of the Day",
+              child: Container(
+                constraints: BoxConstraints(minHeight: 120),
+                child: Text(
+                  "Push yourself, because no one else is going to do it for you.",
+                  style: TextStyle(fontSize: 16, color: Colors.black87),
+                ),
+              ),
             ),
-          ),
-              SizedBox(height: 20),
-       ],
-    ),
+            SizedBox(height: 20),
+          ],
+        ),
       ),
-        bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed, // Add this line
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         selectedItemColor: Colors.green[900],
@@ -168,6 +140,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
       ),
+
     );
   }
 
@@ -193,8 +166,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text(title,
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  if (subtitle != null)
+                  if (subtitle != null) ...[
+                    SizedBox(height: 15), // <-- adds spacing
                     Text(subtitle, style: TextStyle(fontSize: 16, color: Colors.black87)),
+                  ],
+
                 ],
               ),
               if (trailing != null) trailing,
