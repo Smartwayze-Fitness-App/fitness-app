@@ -1,0 +1,44 @@
+[
+  {
+    "body_part": "Full Body",
+    "difficulty": "Beginner",
+    "equipment": "None",
+    "instructions": "Run in place for 60 seconds, then jump rope for 1 minute.",
+    "name": "Cardio"
+  },
+  {
+    "body_part": "Upper Body",
+    "difficulty": "Intermediate",
+    "equipment": "Dumbbells",
+    "instructions": "3 sets of bicep curls, shoulder press, and push-ups.",
+    "name": "Strength "
+  },
+  {
+    "body_part": "Core",
+    "difficulty": "Beginner",
+    "equipment": "Yoga Mat",
+    "instructions": "Perform sun salutations, cat-cow stretches, and cobra pose.",
+    "name": "Yoga Flow"
+  },
+  {
+    "body_part": "Lower Body",
+    "difficulty": "Advanced",
+    "equipment": "Resistance Bands",
+    "instructions": "Alternate 30s of jumping squats with 30s rest, 5 rounds.",
+    "name": "HIIT Burn"
+  },
+  {
+    "body_part": "Full Body",
+    "difficulty": "Beginner",
+    "equipment": "None",
+    "instructions": "Perform static stretches for hamstrings, hips, and shoulders.",
+    "name": "Flexibility Boost"
+  },
+  {
+    "body_part": "Abs",
+    "difficulty": "Intermediate",
+    "equipment": "Pilates Ring",
+    "instructions": "Use ring for leg circles, bridge pulses, and hundreds.",
+    "name": "Pilates Core"
+  }
+]
