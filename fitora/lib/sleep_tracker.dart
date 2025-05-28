@@ -4,10 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
 
-void main() {
-  runApp(SleepTrackerApp());
-}
-
 class SleepTrackerApp extends StatelessWidget {
   const SleepTrackerApp({super.key});
 
@@ -91,10 +87,12 @@ class _SleepTrackerPageState extends State<SleepTrackerPage> {
   Future<void> loadWeeklyData() async {
     final prefs = await SharedPreferences.getInstance();
     String? data = prefs.getString('weeklyData');
-    setState(() {
-      weeklyData = Map<String, double>.from(jsonDecode(data));
-    });
+    if (data != null) {
+      setState(() {
+        weeklyData = Map<String, double>.from(jsonDecode(data));
+      });
     }
+  }
 
   Widget buildBarChart() {
     final days = ['Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat', 'Sun'];
