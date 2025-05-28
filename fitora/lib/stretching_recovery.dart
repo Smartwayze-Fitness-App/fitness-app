@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StretchingRecoveryScreen extends StatelessWidget {
   final List<Map<String, dynamic>> exercises = [
@@ -29,22 +31,20 @@ class StretchingRecoveryScreen extends StatelessWidget {
     },
   ];
 
-  StretchingRecoveryScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5FFF6), // Same background as stats screen
+      backgroundColor: const Color(0xFFF5FFF6),
       appBar: AppBar(
         title: Text(
           "Stretching & Recovery",
-            style: TextStyle(
-              color: Color(0xFF1E5631),
-              fontWeight: FontWeight.bold,
-              fontSize: 24,
-            )
+          style: TextStyle(
+            color: Color(0xFF1E5631),
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
         ),
-        backgroundColor: const Color(0xFFF5FFF6), // Match background
+        backgroundColor: const Color(0xFFF5FFF6),
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.green.shade800),
       ),
@@ -54,59 +54,86 @@ class StretchingRecoveryScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final exercise = exercises[index];
           return InkWell(
-            onTap: (){
-              /*
-               if (exercise["name"] == "Quad Stretch") {
-                 Navigator.push(context, MaterialPageRoute(builder: (context) => QuadStretchScreen()));
-             } else if (exercise["name"] == "Hamstring Stretch") {
-               Navigator.push(context, MaterialPageRoute(builder: (context) => HamstringStretchScreen()));
+            onTap: () async {
+              final user = FirebaseAuth.instance.currentUser;
+              if (user == null) return;
+
+              final userId = user.uid;
+
+              final stretchRef = FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(userId)
+                  .collection('stretching');
+
+              //  Add stretching session
+              await stretchRef.add({
+                'exercise': exercise["name"],
+                'timestamp': Timestamp.now(),
+              });
+
+              //  Count stretching sessions
+              final snapshot = await stretchRef.get();
+              final stretchCount = snapshot.docs.length;
+
+              // Unlock achievement if 3 or more
+              if (stretchCount >= 3) {
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(userId)
+                    .set({
+                  'achievements': {'stretch_star': true}
+                }, SetOptions(merge: true));
               }
-             // and so on...
-               */
+
+    //  Show confirmation
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${exercise["name"]}  completed!')),
+              );
             },
-            child:Container(
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 16,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: const Color(0xFF50C878),
-                  child: Icon(
-                    exercise["icon"],
-                    color: Colors.white,
-                    size: 28,
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 16,
+                    offset: Offset(0, 3),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      exercise["name"],
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: const Color(0xFF50C878),
+                    child: Icon(
+                      exercise["icon"],
+                      color: Colors.white,
+                      size: 28,
                     ),
-                    Text("Duration: ${exercise["duration"]}"),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        exercise["name"],
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text("Duration: ${exercise["duration"]}"),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ));
+          );
         },
       ),
     );
