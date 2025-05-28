@@ -9,9 +9,9 @@ class UserProfileScreen extends StatefulWidget {
 
   @override
 
-  // void initState() {
-  //super.initState();
-  //fetchUserProfile(); // auto-fetches when screen opens
+ // void initState() {
+    //super.initState();
+    //fetchUserProfile(); // auto-fetches when screen opens
   //}
 /*
   Future<void> fetchUserProfile(String userId) async {
@@ -130,7 +130,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         elevation: 0,
 
         title: const Text(
-            'User Profile',
+          'User Profile',
             style: TextStyle(
               color: Color(0xFF1E5631),
               fontWeight: FontWeight.bold,

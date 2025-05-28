@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class CalorieCounterScreen extends StatefulWidget {
-  const CalorieCounterScreen({Key? key}) : super(key: key);
+  final String userId;
+  const CalorieCounterScreen({Key? key,required this.userId}) : super(key: key);
 
   @override
   State<CalorieCounterScreen> createState() => _CalorieCounterScreenState();
@@ -13,7 +17,7 @@ class _CalorieCounterScreenState extends State<CalorieCounterScreen> {
 
   final List<Map<String, dynamic>> _meals = [];
 
-  void _addMeal() {
+  Future<void> _addMeal() async {
     String meal = _mealController.text.trim();
     String caloriesText = _calorieController.text.trim();
 
@@ -31,14 +35,62 @@ class _CalorieCounterScreenState extends State<CalorieCounterScreen> {
       );
       return;
     }
+    final response = await http.post(
+      Uri.parse('https://maryam56.pythonanywhere.com/api/meals'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        "user_id": widget.userId,
+        "meal_name": meal,
+        "calories": calories // Replace with logged-in user's ID
+      }),
+    );
 
-    setState(() {
+    if (response.statusCode == 201) {
+      setState(() {
+        _meals.add({'meal': meal, 'calories': calories});
+        _mealController.clear();
+        _calorieController.clear();
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add meal.')),
+      );
+    }
+}
+  Future<void> _fetchMeals() async {
+    final response = await http.get(
+      Uri.parse(' https://maryam56.pythonanywhere.com/api/meals/${widget.userId}'),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      setState(() {
+        _meals.clear();
+        _meals.addAll(data.map((item) => {
+          'meal': item['meal'],
+          'calories': item['calories'],
+        }));
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch meals.')),
+      );
+    }
+  }
+
+@override
+  void initState() {
+    super.initState();
+    _fetchMeals();
+  }
+
+    /*setState(() {
       _meals.add({'meal': meal, 'calories': calories});
       _mealController.clear();
       _calorieController.clear();
     });
   }
-
+*/
   int _getTotalCalories() {
     return _meals.fold(0, (sum, item) => item['calories'] + sum);
   }

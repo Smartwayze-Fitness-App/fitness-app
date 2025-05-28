@@ -1,5 +1,6 @@
 
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
                                                                                                                                                                                        import 'package:flutter/material.dart';
@@ -24,6 +25,9 @@ void dispose() {
   contactController.dispose();
   super.dispose();
 }
+  bool isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$').hasMatch(email);
+  }
   Future<void> signupUser() async {
     print('SignUp button pressed'); // Debug print
 
@@ -58,7 +62,42 @@ void dispose() {
       );
     }
   }
+  Future<void> signUpWithFirebase() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+    final confirmPassword = confirmPasswordController.text.trim();
 
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      showSnackBar("Please fill all fields");
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      showSnackBar("Invalid email format");
+      return;
+    }
+
+    if (password != confirmPassword) {
+      showSnackBar("Passwords do not match");
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      showSnackBar("✅ Signup successful");
+    } on FirebaseAuthException catch (e) {
+      showSnackBar("Signup failed: ${e.message}");
+    } catch (e) {
+      showSnackBar("Unexpected error: $e");
+    }
+  }
+
+  void showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -151,8 +190,13 @@ void dispose() {
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  onPressed: () {
-                    signupUser();
+                  onPressed: () async{
+                     try {
+                        await signUpWithFirebase();
+                       await signupUser();
+                     }catch(e){
+                       print("Error: $e");
+                     }
                   },
                   child: const Text(
                     'Sign Up',
