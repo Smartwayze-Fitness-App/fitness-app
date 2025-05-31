@@ -42,7 +42,7 @@ class MeditationScreenState extends State<MeditationScreen> {
         if (_isSoundOn) {
           try {
             await _audioPlayer.play(
-              AssetSource('sounds/beep.mp3'),
+              AssetSource('assets/sounds/beep.mp3'),
               volume: 1.0,
             );
           } catch (e) {
